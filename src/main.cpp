@@ -20,6 +20,12 @@ const char* fragmentShaderSource = R"glsl(
     }
 )glsl";
 
+float vertices[] = {
+	0.0f,  0.5f, 0.0f,  // top
+	-0.5f, -0.5f, 0.0f,  // bottom left
+	0.5f, -0.5f, 0.0f   // bottom right
+};
+
 void init(SDL_Window** window, SDL_GLContext* glContext) {
     // Initialize SDL3 with OpenGL
     SDL_Init(SDL_INIT_VIDEO);
@@ -61,32 +67,17 @@ GLuint initializeShaders() {
 	return shaderProgram;
 }
 
-int main() {
-
-	SDL_Window* window;
-	SDL_GLContext glContext;
-	init(&window, &glContext);
-
-	GLuint shaderProgram = initializeShaders();
-
-    // Define the triangle vertices
-    float vertices[] = {
-        0.0f,  0.5f, 0.0f,  // top
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        0.5f, -0.5f, 0.0f   // bottom right
-    };
-
+void initializeVertexBuffer(GLuint* VAO, GLuint* VBO) {
 
     // Setup Vertex Array and Buffer Objects (VAO, VBO)
-    GLuint VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    glGenVertexArrays(1, VAO);
+    glGenBuffers(1, VBO);
 
     // Bind VAO
-    glBindVertexArray(VAO);
+    glBindVertexArray(*VAO);
 
     // Bind VBO and upload vertex data
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, *VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // Define vertex attributes (position attribute)
@@ -96,6 +87,19 @@ int main() {
     // Unbind VBO and VAO
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+}
+
+int main() {
+
+	SDL_Window* window;
+	SDL_GLContext glContext;
+	init(&window, &glContext);
+
+	GLuint shaderProgram = initializeShaders();
+
+	GLuint VAO, VBO;
+	initializeVertexBuffer(&VAO, &VBO);
+
 
     // Main loop
     bool running = true;
@@ -108,15 +112,14 @@ int main() {
         }
 
         // Clear the screen
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);  // Set background to dark gray
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Use the shader program
         glUseProgram(shaderProgram);
 
-        // Bind VAO and draw the triangle
+        // Draw triangles
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);  // Draw the triangle (3 vertices)
+        glDrawArrays(GL_TRIANGLES, 0, 3);  
 
         // Swap buffers
         SDL_GL_SwapWindow(window);
