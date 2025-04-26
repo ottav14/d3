@@ -1,10 +1,11 @@
 TARGET = d3
-SRC = main.cpp Triangle.cpp
+SRC = src/main.cpp src/glad.c
 CC = g++
-LIBS = -lSDL3
+LIBS = -lSDL3 -lGL 
+CFLAGS = -Iinclude
 
 all:
-	$(CC) -o $(TARGET) $(SRC) $(LIBS)
+	$(CC) -o $(TARGET) $(SRC) $(CFLAGS) $(LIBS)
 	
 run:
 	make && ./$(TARGET)
