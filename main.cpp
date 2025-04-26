@@ -1,5 +1,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include "Triangle.h"
 
 int main(int argc, char *argv[])
 {
@@ -8,6 +9,7 @@ int main(int argc, char *argv[])
     int width = 800;
 	int height = 600;
     bool loopShouldStop = false;
+	Uint64 start_ticks = SDL_GetTicks();
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -15,9 +17,13 @@ int main(int argc, char *argv[])
 
     renderer = SDL_CreateRenderer(win, NULL);
 
-	SDL_FPoint a = {400.0f, 100.0f};
-    SDL_FPoint b = {650.0f, 500.0f};
-    SDL_FPoint c = {150.0f, 500.0f};
+    SDL_Vertex vertices[3] = {
+        { {400, 150}, {1.0f, 0.0f, 0.0f, 1.0f}, {0, 0} }, 
+        { {200, 450}, {0.0f, 0.0f, 1.0f, 1.0f}, {0, 0} }, 
+        { {600, 450}, {0.0f, 1.0f, 0.0f, 1.0f}, {0, 0} } 
+    };
+	 
+	Triangle triangle(vertices[0], vertices[1], vertices[2]);
 
     while (!loopShouldStop)
     {
@@ -35,14 +41,16 @@ int main(int argc, char *argv[])
 		SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255); 
         SDL_RenderClear(renderer);
 
-		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); 
+		triangle.render(renderer);
 
-        SDL_RenderLine(renderer, a.x, a.y, b.x, b.y);
-        SDL_RenderLine(renderer, b.x, b.y, c.x, c.y);
-        SDL_RenderLine(renderer, c.x, c.y, a.x, a.y);
+		SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); 
 
 
         SDL_RenderPresent(renderer);
+
+		triangle.translate(0.01, 0);
+
+
     }
 
     SDL_DestroyRenderer(renderer);

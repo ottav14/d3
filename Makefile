@@ -1,5 +1,13 @@
+TARGET = d3
+SRC = main.cpp Triangle.cpp
+CC = g++
+LIBS = -lSDL3
+
 all:
-	g++ -o program main.cpp -lSDL3
+	$(CC) -o $(TARGET) $(SRC) $(LIBS)
 	
 run:
-	make && ./program
+	make && ./$(TARGET)
+
+clean:
+	rm -rf $(TARGET)
