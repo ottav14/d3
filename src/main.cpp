@@ -1,6 +1,7 @@
 #include <SDL3/SDL.h>
 #include <glad/glad.h>
 #include <iostream>
+#include <cmath>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -172,11 +173,13 @@ int main() {
 
 		// Build vertex matrices
 		glm::vec3 initial_camera_position = glm::vec3(0.0f, 0.0f, -3.0f);
+		glm::vec3 camera_position = initial_camera_position;
 
 		glm::mat4 model = glm::mat4(1.0f);
         model = glm::rotate(model, timeSeconds, glm::vec3(0.0f, 1.0f, 1.0f)); // Rotate
+        model = glm::scale(model, glm::vec3(0.5f, sin(timeSeconds) + 1.0f, 1.0f)); // Scale
 
-        glm::mat4 view = glm::translate(glm::mat4(1.0f), initial_camera_position); // Move camera back
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), camera_position); // Move camera back
 
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
