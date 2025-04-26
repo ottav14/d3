@@ -1,58 +1,92 @@
 #include <SDL3/SDL.h>
 #include <glad/glad.h>
-
 #include <iostream>
 
-int main(int argc, char* argv[]) {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
-        return 1;
+const char* vertexShaderSource = R"glsl(
+    #version 330 core
+    layout (location = 0) in vec3 aPos;
+    void main()
+    {
+        gl_Position = vec4(aPos, 1.0);
     }
+)glsl";
 
-    // Request OpenGL 3.3 Core Profile
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
-    SDL_Window* window = SDL_CreateWindow(
-        "test window",
-        800, 600,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
-    );
-
-    if (!window) {
-        std::cerr << "Failed to create SDL window: " << SDL_GetError() << std::endl;
-        SDL_Quit();
-        return 1;
+const char* fragmentShaderSource = R"glsl(
+    #version 330 core
+    out vec4 FragColor;
+    void main()
+    {
+        FragColor = vec4(1.0, 0.5, 0.2, 1.0); // orange color
     }
+)glsl";
 
-    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-    if (!gl_context) {
-        std::cerr << "Failed to create OpenGL context: " << SDL_GetError() << std::endl;
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
+int main() {
 
-    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
-        std::cerr << "Failed to initialize GLAD" << std::endl;
-        SDL_GL_DestroyContext(gl_context);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
+    // Initialize SDL3 with OpenGL
+    SDL_Init(SDL_INIT_VIDEO);
 
-    SDL_GL_SetSwapInterval(1); // Enable vsync
+    // Create an SDL window with OpenGL context
+    SDL_Window* window = SDL_CreateWindow("GLAD OpenGL Triangle",
+                                          800, 
+										  600, 
+										  SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
 
-    // Print some OpenGL info
-    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "GLSL Version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
-    std::cout << "Vendor: " << glGetString(GL_VENDOR) << std::endl;
-    std::cout << "Renderer: " << glGetString(GL_RENDERER) << std::endl;
+    // Create OpenGL context
+    SDL_GLContext glContext = SDL_GL_CreateContext(window);
 
+    // Initialize GLAD to load OpenGL functions
+    gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
+
+    // Define the triangle vertices
+    float vertices[] = {
+        0.0f,  0.5f, 0.0f,  // top
+        -0.5f, -0.5f, 0.0f,  // bottom left
+        0.5f, -0.5f, 0.0f   // bottom right
+    };
+
+    // Vertex Shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+    glCompileShader(vertexShader);
+
+    // Fragment Shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+    glCompileShader(fragmentShader);
+
+    // Shader Program
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    // Cleanup shaders
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // Setup Vertex Array and Buffer Objects (VAO, VBO)
+    GLuint VAO, VBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    // Bind VAO
+    glBindVertexArray(VAO);
+
+    // Bind VBO and upload vertex data
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // Define vertex attributes (position attribute)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Unbind VBO and VAO
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // Main loop
     bool running = true;
     SDL_Event event;
-
     while (running) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {
@@ -60,13 +94,34 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+        // Clear the screen
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);  // Set background to dark gray
         glClear(GL_COLOR_BUFFER_BIT);
 
+        // Use the shader program
+        glUseProgram(shaderProgram);
+
+        // Bind VAO and draw the triangle
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 3);  // Draw the triangle (3 vertices)
+
+        // Swap buffers
         SDL_GL_SwapWindow(window);
+
+        // Check for OpenGL errors
+        GLenum err;
+        while ((err = glGetError()) != GL_NO_ERROR) {
+            std::cerr << "OpenGL error: " << err << std::endl;
+        }
     }
 
-    SDL_GL_DestroyContext(gl_context);
+    // Cleanup
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteProgram(shaderProgram);
+
+    // Cleanup SDL
+    SDL_GL_DestroyContext(glContext);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
