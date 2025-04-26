@@ -29,6 +29,38 @@ const char* fragmentShaderSource = R"glsl(
     }
 )glsl";
 
+float cubeVertices[] = {
+    -0.5f, -0.5f, -0.5f,  // 0
+     0.5f, -0.5f, -0.5f,  // 1
+     0.5f,  0.5f, -0.5f,  // 2
+    -0.5f,  0.5f, -0.5f,  // 3
+    -0.5f, -0.5f,  0.5f,  // 4
+     0.5f, -0.5f,  0.5f,  // 5
+     0.5f,  0.5f,  0.5f,  // 6
+    -0.5f,  0.5f,  0.5f   // 7
+};
+
+unsigned int cubeIndices[] = {
+    // back face
+    0, 1, 2,
+    2, 3, 0,
+    // front face
+    4, 5, 6,
+    6, 7, 4,
+    // left face
+    4, 0, 3,
+    3, 7, 4,
+    // right face
+    1, 5, 6,
+    6, 2, 1,
+    // bottom face
+    4, 5, 1,
+    1, 0, 4,
+    // top face
+    3, 2, 6,
+    6, 7, 3
+};
+
 float vertices[] = {
 	-0.5f,  0.5f, 0.0f,  // top left
 	-0.5f, -0.5f, 0.0f,  // bottom left
@@ -79,18 +111,23 @@ GLuint initializeShaders() {
 	return shaderProgram;
 }
 
-void initializeVertexBuffer(GLuint* VAO, GLuint* VBO) {
+void initializeVertexBuffer(GLuint* VAO, GLuint* VBO, GLuint* EBO) {
 
     // Setup Vertex Array and Buffer Objects (VAO, VBO)
     glGenVertexArrays(1, VAO);
     glGenBuffers(1, VBO);
+    glGenBuffers(1, EBO);
 
     // Bind VAO
     glBindVertexArray(*VAO);
 
     // Bind VBO and upload vertex data
     glBindBuffer(GL_ARRAY_BUFFER, *VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
+
+	// Element Buffer
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cubeIndices), cubeIndices, GL_STATIC_DRAW);
 
     // Define vertex attributes (position attribute)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
@@ -109,8 +146,8 @@ int main() {
 
 	GLuint shaderProgram = initializeShaders();
 
-	GLuint VAO, VBO;
-	initializeVertexBuffer(&VAO, &VBO);
+	GLuint VAO, VBO, EBO;
+	initializeVertexBuffer(&VAO, &VBO, &EBO);
 
 
     // Main loop
@@ -128,6 +165,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Enable wireframe
 
 		// Get time
 		float timeSeconds = (float)SDL_GetTicks() / 1000.0f;
@@ -136,7 +174,7 @@ int main() {
 		glm::vec3 initial_camera_position = glm::vec3(0.0f, 0.0f, -3.0f);
 
 		glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, timeSeconds, glm::vec3(0.0f, 1.0f, 0.0f)); // Rotate around Z
+        model = glm::rotate(model, timeSeconds, glm::vec3(0.0f, 1.0f, 1.0f)); // Rotate
 
         glm::mat4 view = glm::translate(glm::mat4(1.0f), initial_camera_position); // Move camera back
 
@@ -153,7 +191,7 @@ int main() {
 
         // Draw triangles
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 6);  
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
         // Swap buffers
         SDL_GL_SwapWindow(window);
