@@ -1,14 +1,23 @@
 #include <SDL3/SDL.h>
 #include <glad/glad.h>
 #include <iostream>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 const char* vertexShaderSource = R"glsl(
-    #version 330 core
-    layout (location = 0) in vec3 aPos;
-    void main()
-    {
-        gl_Position = vec4(aPos, 1.0);
-    }
+	#version 330 core
+
+	layout(location = 0) in vec3 aPosition;
+
+	uniform mat4 uModel;
+	uniform mat4 uView;
+	uniform mat4 uProjection;
+
+	void main()
+	{
+		gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+	}
 )glsl";
 
 const char* fragmentShaderSource = R"glsl(
@@ -22,7 +31,7 @@ const char* fragmentShaderSource = R"glsl(
 
 float vertices[] = {
 	0.0f,  0.5f, 0.0f,  // top
-	-0.5f, -0.5f, 0.0f,  // bottom left
+	0.0f, -0.5f, 0.0f,  // bottom left
 	0.5f, -0.5f, 0.0f   // bottom right
 };
 
@@ -116,6 +125,28 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
+
+		// Get time
+		float timeSeconds = (float)SDL_GetTicks() / 1000.0f;
+
+		// Build vertex matrices
+		glm::vec3 initial_camera_position = glm::vec3(0.0f, 0.0f, -3.0f);
+
+		glm::mat4 model = glm::mat4(1.0f);
+        model = glm::rotate(model, timeSeconds, glm::vec3(0.0f, 1.0f, 0.0f)); // Rotate around Z
+
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), initial_camera_position); // Move camera back
+
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+
+		// Pass matrices to shader
+		GLint modelLoc = glGetUniformLocation(shaderProgram, "uModel");
+        GLint viewLoc = glGetUniformLocation(shaderProgram, "uView");
+        GLint projLoc = glGetUniformLocation(shaderProgram, "uProjection");
+
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
         // Draw triangles
         glBindVertexArray(VAO);

@@ -1,7 +1,7 @@
 TARGET = d3
 SRC = src/main.cpp src/glad.c
 CC = g++
-LIBS = -lSDL3 -lGL 
+LIBS = -lSDL3 -lGL -lglm
 CFLAGS = -Iinclude
 
 all:
