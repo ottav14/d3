@@ -30,9 +30,12 @@ const char* fragmentShaderSource = R"glsl(
 )glsl";
 
 float vertices[] = {
-	0.0f,  0.5f, 0.0f,  // top
-	0.0f, -0.5f, 0.0f,  // bottom left
-	0.5f, -0.5f, 0.0f   // bottom right
+	-0.5f,  0.5f, 0.0f,  // top left
+	-0.5f, -0.5f, 0.0f,  // bottom left
+	 0.5f, -0.5f, 0.0f,  // bottom right
+	-0.5f,  0.5f, 0.0f,  // top left
+	 0.5f, -0.5f, 0.0f,  // bottom right
+	 0.5f,  0.5f, 0.0f   // top right
 };
 
 void init(SDL_Window** window, SDL_GLContext* glContext) {
@@ -150,7 +153,7 @@ int main() {
 
         // Draw triangles
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);  
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 6);  
 
         // Swap buffers
         SDL_GL_SwapWindow(window);
