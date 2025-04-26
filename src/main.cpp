@@ -2,9 +2,12 @@
 #include <glad/glad.h>
 #include <iostream>
 #include <cmath>
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#define CAMERA_SPEED 0.1
 
 const char* vertexShaderSource = R"glsl(
 	#version 330 core
@@ -71,9 +74,13 @@ float vertices[] = {
 	 0.5f,  0.5f, 0.0f   // top right
 };
 
+uint8_t keys_held = 0;
+glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, -3.0f);
+glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, 1.0f);
+
 void init(SDL_Window** window, SDL_GLContext* glContext) {
     // Initialize SDL3 with OpenGL
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
     // Create an SDL window with OpenGL context
     *window = SDL_CreateWindow("d3",
@@ -86,6 +93,10 @@ void init(SDL_Window** window, SDL_GLContext* glContext) {
 
     // Initialize GLAD to load OpenGL functions
     gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
+
+	// Capture mouse
+	SDL_CaptureMouse(true);
+	SDL_HideCursor();
 }
 
 GLuint initializeShaders() {
@@ -139,6 +150,67 @@ void initializeVertexBuffer(GLuint* VAO, GLuint* VBO, GLuint* EBO) {
     glBindVertexArray(0);
 }
 
+bool handleKeyboardInput(SDL_Event event) {
+	if(event.type == SDL_EVENT_KEY_DOWN && event.key.repeat == 0) {
+		switch(event.key.key) {
+			case SDLK_W:
+				keys_held |= (1 << 0);
+				break;
+			case SDLK_A:
+				keys_held |= (1 << 1);
+				break;
+			case SDLK_S:
+				keys_held |= (1 << 2);
+				break;
+			case SDLK_D:
+				keys_held |= (1 << 3);
+				break;
+			case SDLK_ESCAPE:
+				return false; 
+		}
+	}
+
+	if(event.type == SDL_EVENT_KEY_UP) {
+		switch(event.key.key) {
+			case SDLK_W:
+				keys_held &= ~(1 << 0);
+				break;
+			case SDLK_A:
+				keys_held &= ~(1 << 1);
+				break;
+			case SDLK_S:
+				keys_held &= ~(1 << 2);
+				break;
+			case SDLK_D:
+				keys_held &= ~(1 << 3);
+				break;
+		}
+	}
+	return true;
+
+}
+
+void updateCameraPosition() {
+	if((keys_held & (1 << 0))) {
+		camera_position.z += CAMERA_SPEED;
+	}
+	if((keys_held & (1 << 1))) {
+		camera_position.x += CAMERA_SPEED;
+	}
+	if((keys_held & (1 << 2))) {
+		camera_position.z -= CAMERA_SPEED;
+	}
+	if((keys_held & (1 << 3))) {
+		camera_position.x -= CAMERA_SPEED;
+	}
+}
+
+void handleMouseInput(float xrel, float yrel) {
+
+	
+
+}
+
 int main() {
 
 	SDL_Window* window;
@@ -154,12 +226,24 @@ int main() {
     // Main loop
     bool running = true;
     SDL_Event event;
+
+
     while (running) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT) {
+            if(event.type == SDL_EVENT_QUIT) {
                 running = false;
             }
-        }
+
+			if(event.type == SDL_EVENT_MOUSE_MOTION) {
+				handleMouseInput(event.motion.xrel, event.motion.yrel);
+			}
+
+			if(event.type == SDL_EVENT_KEY_UP || event.type == SDL_EVENT_KEY_DOWN) {
+				running = handleKeyboardInput(event);
+			}
+		}
+		updateCameraPosition();
+
 
         // Clear the screen
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -172,14 +256,18 @@ int main() {
 		float timeSeconds = (float)SDL_GetTicks() / 1000.0f;
 
 		// Build vertex matrices
-		glm::vec3 initial_camera_position = glm::vec3(0.0f, 0.0f, -3.0f);
-		glm::vec3 camera_position = initial_camera_position;
-
 		glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, timeSeconds, glm::vec3(0.0f, 1.0f, 1.0f)); // Rotate
-        model = glm::scale(model, glm::vec3(0.5f, sin(timeSeconds) + 1.0f, 1.0f)); // Scale
+        model = glm::rotate(model, timeSeconds, glm::vec3(0.0f, 1.0f, 1.0f)); // Rotate model
+        model = glm::scale(model, glm::vec3(0.5f, sin(timeSeconds) + 1.0f, 1.0f)); // Scale model
 
-        glm::mat4 view = glm::translate(glm::mat4(1.0f), camera_position); // Move camera back
+		camera_front.x = cos(glm::radians(timeSeconds)) * cos(0);
+        camera_front.y = sin(0);
+        camera_front.z = sin(glm::radians(timeSeconds)) * cos(0);
+        camera_front = glm::normalize(camera_front);
+
+
+		//glm::mat4 view = glm::lookAt(camera_position, camera_position + camera_front, glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::mat4 view = glm::translate(glm::mat4(1.0f), camera_position);
 
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
@@ -212,6 +300,8 @@ int main() {
     glDeleteProgram(shaderProgram);
 
     // Cleanup SDL
+	SDL_CaptureMouse(false);
+	SDL_ShowCursor();
     SDL_GL_DestroyContext(glContext);
     SDL_DestroyWindow(window);
     SDL_Quit();
