@@ -20,30 +20,24 @@ const char* fragmentShaderSource = R"glsl(
     }
 )glsl";
 
-int main() {
-
+void init(SDL_Window** window, SDL_GLContext* glContext) {
     // Initialize SDL3 with OpenGL
     SDL_Init(SDL_INIT_VIDEO);
 
     // Create an SDL window with OpenGL context
-    SDL_Window* window = SDL_CreateWindow("GLAD OpenGL Triangle",
-                                          800, 
-										  600, 
-										  SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+    *window = SDL_CreateWindow("d3",
+	   						    800, 
+							    600, 
+							    SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
 
     // Create OpenGL context
-    SDL_GLContext glContext = SDL_GL_CreateContext(window);
+    *glContext = SDL_GL_CreateContext(*window);
 
     // Initialize GLAD to load OpenGL functions
     gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
+}
 
-    // Define the triangle vertices
-    float vertices[] = {
-        0.0f,  0.5f, 0.0f,  // top
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        0.5f, -0.5f, 0.0f   // bottom right
-    };
-
+GLuint initializeShaders() {
     // Vertex Shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
@@ -63,6 +57,25 @@ int main() {
     // Cleanup shaders
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+
+	return shaderProgram;
+}
+
+int main() {
+
+	SDL_Window* window;
+	SDL_GLContext glContext;
+	init(&window, &glContext);
+
+	GLuint shaderProgram = initializeShaders();
+
+    // Define the triangle vertices
+    float vertices[] = {
+        0.0f,  0.5f, 0.0f,  // top
+        -0.5f, -0.5f, 0.0f,  // bottom left
+        0.5f, -0.5f, 0.0f   // bottom right
+    };
+
 
     // Setup Vertex Array and Buffer Objects (VAO, VBO)
     GLuint VAO, VBO;
