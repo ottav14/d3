@@ -1,5 +1,5 @@
 TARGET = d3
-SRC = src/main.cpp src/glad.c
+SRC = src/main.cpp src/glad.c src/Prism.cpp
 CC = g++
 LIBS = -lSDL3 -lGL -lglm
 CFLAGS = -Iinclude

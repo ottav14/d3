@@ -2,10 +2,12 @@
 #include <glad/glad.h>
 #include <iostream>
 #include <cmath>
+#include <vector>
 #include <cstdint>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "Prism.h"
 
 #define PI 3.141592f
 #define CAMERA_SPEED 0.1f
@@ -68,19 +70,11 @@ unsigned int cubeIndices[] = {
     6, 7, 3
 };
 
-float vertices[] = {
-	-0.5f,  0.5f, 0.0f,  // top left
-	-0.5f, -0.5f, 0.0f,  // bottom left
-	 0.5f, -0.5f, 0.0f,  // bottom right
-	-0.5f,  0.5f, 0.0f,  // top left
-	 0.5f, -0.5f, 0.0f,  // bottom right
-	 0.5f,  0.5f, 0.0f   // top right
-};
-
 uint8_t keys_held = 0;
 glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, -3.0f);
 float camera_yaw = 90.0f;
 float camera_pitch = 0;
+std::vector<Prism> prism_array;
 
 void init(SDL_Window** window, SDL_GLContext* glContext) {
     // Initialize SDL3 with OpenGL
@@ -136,13 +130,38 @@ void initializeVertexBuffer(GLuint* VAO, GLuint* VBO, GLuint* EBO) {
     // Bind VAO
     glBindVertexArray(*VAO);
 
-    // Bind VBO and upload vertex data
-    glBindBuffer(GL_ARRAY_BUFFER, *VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
+	// Calculate data size
+	GLsizeiptr totalSize = 0;
+	for(Prism p : prism_array)
+		totalSize += p.getVertexCount() * sizeof(float);
 
-	// Element Buffer
+	// Allocate data size
+    glBindBuffer(GL_ARRAY_BUFFER, *VBO);
+	glBufferData(GL_ARRAY_BUFFER, totalSize, nullptr, GL_STATIC_DRAW);
+
+    // Upload vertex data
+	GLsizeiptr data_offset = 0;
+	for(Prism p : prism_array) {
+		GLsizeiptr current_size = p.getVertexCount() * sizeof(float);
+		glBufferSubData(GL_ARRAY_BUFFER, data_offset, current_size, p.getVertices());
+		data_offset += current_size;
+	}
+
+	// Allocate element buffer
+	totalSize = 0;	
+	for(Prism p : prism_array)
+		totalSize += p.getIndexCount() * sizeof(unsigned int);
+
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cubeIndices), cubeIndices, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, totalSize, nullptr, GL_STATIC_DRAW);
+
+	// Upload element data
+	data_offset = 0;
+	for(Prism p : prism_array) {
+		GLsizeiptr current_size = p.getIndexCount() * sizeof(unsigned int);
+		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, data_offset, current_size, p.getIndices());
+		data_offset += current_size;
+	}
 
     // Define vertex attributes (position attribute)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
@@ -234,8 +253,18 @@ int main() {
 
 	GLuint shaderProgram = initializeShaders();
 
+
+	// Create prism
+	int vertexCount = sizeof(cubeVertices) / sizeof(float);
+	int indexCount = sizeof(cubeIndices) / sizeof(unsigned int);
+	Prism prism(cubeVertices, vertexCount, cubeIndices, indexCount);
+	prism_array.push_back(prism);
+
+
+	// Build vertex buffer
 	GLuint VAO, VBO, EBO;
 	initializeVertexBuffer(&VAO, &VBO, &EBO);
+
 
 
     // Main loop
@@ -272,8 +301,8 @@ int main() {
 
 		// Build vertex matrices
 		glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, timeSeconds, glm::vec3(0.0f, 1.0f, 1.0f)); // Rotate model
-        model = glm::scale(model, glm::vec3(0.5f, sin(timeSeconds) + 1.0f, 1.0f)); // Scale model
+        model = glm::rotate(model, 0.0f, glm::vec3(0.0f, 1.0f, 1.0f)); // Rotate model
+        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f)); // Scale model
 
 		// Rotate camera
 		float pitchAngle = glm::radians(PI/2);
