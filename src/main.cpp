@@ -7,7 +7,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#define CAMERA_SPEED 0.1
+#define PI 3.141592f
+#define CAMERA_SPEED 0.1f
+#define MOUSE_SENSITIVITY 0.1f
+#define WIREFRAME_ENABLED true
 
 const char* vertexShaderSource = R"glsl(
 	#version 330 core
@@ -76,7 +79,8 @@ float vertices[] = {
 
 uint8_t keys_held = 0;
 glm::vec3 camera_position = glm::vec3(0.0f, 0.0f, -3.0f);
-glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, 1.0f);
+float camera_yaw = 90.0f;
+float camera_pitch = 0;
 
 void init(SDL_Window** window, SDL_GLContext* glContext) {
     // Initialize SDL3 with OpenGL
@@ -95,8 +99,7 @@ void init(SDL_Window** window, SDL_GLContext* glContext) {
     gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
 
 	// Capture mouse
-	SDL_CaptureMouse(true);
-	SDL_HideCursor();
+	SDL_SetWindowRelativeMouseMode(*window, true);
 }
 
 GLuint initializeShaders() {
@@ -190,24 +193,36 @@ bool handleKeyboardInput(SDL_Event event) {
 
 }
 
+glm::vec3 getCameraFront() {
+	glm::vec3 front;
+	front.x = cos(glm::radians(camera_yaw)) * cos(glm::radians(camera_pitch));
+	front.y = sin(glm::radians(camera_pitch));
+	front.z = sin(glm::radians(camera_yaw)) * cos(glm::radians(camera_pitch));
+	front = glm::normalize(front);
+	return front;
+}
+
 void updateCameraPosition() {
-	if((keys_held & (1 << 0))) {
-		camera_position.z += CAMERA_SPEED;
-	}
-	if((keys_held & (1 << 1))) {
-		camera_position.x += CAMERA_SPEED;
-	}
-	if((keys_held & (1 << 2))) {
-		camera_position.z -= CAMERA_SPEED;
-	}
-	if((keys_held & (1 << 3))) {
-		camera_position.x -= CAMERA_SPEED;
-	}
+	glm::vec3 camera_front = getCameraFront();
+	camera_front.y = 0;
+	camera_front = glm::normalize(camera_front); // Project front vector to xz plane
+	glm::vec3 camera_right = glm::cross(camera_front, glm::vec3(0.0f, 1.0f, 0.0f));
+	if((keys_held & (1 << 0))) camera_position += CAMERA_SPEED * camera_front; // Forward
+	if((keys_held & (1 << 1))) camera_position -= CAMERA_SPEED * camera_right; // Left
+	if((keys_held & (1 << 2))) camera_position -= CAMERA_SPEED * camera_front; // Back
+	if((keys_held & (1 << 3))) camera_position += CAMERA_SPEED * camera_right; // Right
 }
 
 void handleMouseInput(float xrel, float yrel) {
 
-	
+	camera_yaw += MOUSE_SENSITIVITY * xrel;
+	camera_pitch -= MOUSE_SENSITIVITY * yrel;
+
+	if(camera_yaw > 360.0f) camera_yaw -= 360.0f;
+	if(camera_yaw < 0.0f) camera_yaw += 360.0f;
+
+	if(camera_pitch > 90.0f) camera_pitch = 90.0f;
+	if(camera_pitch < -90.0f) camera_pitch = -90.0f;
 
 }
 
@@ -250,7 +265,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Enable wireframe
+		if(WIREFRAME_ENABLED) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Enable wireframe
 
 		// Get time
 		float timeSeconds = (float)SDL_GetTicks() / 1000.0f;
@@ -260,14 +275,14 @@ int main() {
         model = glm::rotate(model, timeSeconds, glm::vec3(0.0f, 1.0f, 1.0f)); // Rotate model
         model = glm::scale(model, glm::vec3(0.5f, sin(timeSeconds) + 1.0f, 1.0f)); // Scale model
 
-		camera_front.x = cos(glm::radians(timeSeconds)) * cos(0);
-        camera_front.y = sin(0);
-        camera_front.z = sin(glm::radians(timeSeconds)) * cos(0);
-        camera_front = glm::normalize(camera_front);
+		// Rotate camera
+		float pitchAngle = glm::radians(PI/2);
+		float cosYaw = cos(pitchAngle);
+		float sinYaw = sin(pitchAngle);
 
-
-		//glm::mat4 view = glm::lookAt(camera_position, camera_position + camera_front, glm::vec3(0.0f, 1.0f, 0.0f));
-		glm::mat4 view = glm::translate(glm::mat4(1.0f), camera_position);
+		glm::vec3 camera_front = getCameraFront();
+	
+		glm::mat4 view = glm::lookAt(camera_position, camera_position + camera_front, glm::vec3(0.0f, 1.0f, 0.0f));
 
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
